@@ -2,7 +2,7 @@
 
 
 Goal:
-  Be able to control a string of rgb lights and address them by 3d coordinates to allow for cool effects when the string is set up in an in-organic shape.
+  Be able to control a string of rgb lights and address them by 3d (or 2 or 1 or even n dimensions) coordinates to allow for cool effects when the string is set up in an in-organic shape.
   Like [this example by mattparker](https://www.youtube.com/watch?v=TvlpIojusBE), but more modular, wirelessly compatible with WLED, and most importantly: in rust. 
 
 
