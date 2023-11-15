@@ -1,0 +1,10 @@
+[package]
+name = "WLED-n-dimensional-controller"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ddp-rs = "0.3.1"
+wled-json-api-library = "0.1.1"
