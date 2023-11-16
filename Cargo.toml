@@ -7,4 +7,4 @@ edition = "2021"
 
 [dependencies]
 ddp-rs = "0.3.2"
-wled-json-api-library = "0.1.2"
+wled-json-api-library = "0.1.3"
