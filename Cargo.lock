@@ -1291,9 +1291,9 @@ dependencies = [
 
 [[package]]
 name = "wled-json-api-library"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e04b1df6ee0351ad60a2beff9812abf6ce67fb679e9f45ca2583a4ad76c2991"
+checksum = "3480cf995cad53860c436faf1fe9aef5b2209e599e13a11ea874a383658aa541"
 dependencies = [
  "reqwest",
  "serde",

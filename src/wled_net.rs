@@ -1,27 +1,26 @@
-use std::net::{IpAddr, SocketAddr, SocketAddrV4};
+use std::net::{IpAddr, SocketAddr};
 use std::num::{ParseIntError};
 use wled_json_api_library;
 use ddp_rs;
-use wled_json_api_library::structures::cfg::cfg_hw::cfg_hw_led::LightCapability;
 use wled_json_api_library::wled::{Wled as JsonApi};
 use ddp_rs::connection::DDPConnection;
 use reqwest::Url;
 use wled_json_api_library::structures::info::{Info as WledJsonInfo};
 use wled_json_api_library::structures::state::State as WledJsonState;
 
-use wled_json_api_library::errors::WledJsonApiError;
+use wled_json_api_library::structures::info::SegmentLightCapability;
 use crate::error::WledControllerError;
 
 
 /// A single WLED server.
 #[derive(Debug)]
-pub struct PhysicalWled<'a> {
+pub struct PhysicalWled {
     /// the connection to the WLED JSON API. Library by me
     pub json_con: JsonApi,
     /// the DDP connection. Library by @coral and some minor contributions by myself
     pub ddp_con: DDPConnection,
     /// information about pre-defined segments
-    pub segments: Vec<SegmentInfo<'a>>,
+    pub segments: Vec<SegmentInfo>,
     /// the name of the server (found in the WLED UI settings)
     pub friendly_name: String,
     /// the url to reach the WLED on in case the IP is not static. ends in ".local"
@@ -31,26 +30,50 @@ pub struct PhysicalWled<'a> {
 }
 
 #[derive(Debug)]
-pub struct SegmentInfo<'s> {
+pub struct SegmentInfo {
     pub start: u16,
     pub stop: u16,
     pub name: String,
-    pub capabilities: LightCapability,
-    pub ddp_ref: &'s DDPConnection,
+    pub capabilities: u8,
 }
 
 
 
-impl<'b> PhysicalWled<'b> {
+impl SegmentInfo {
+    /// returns true if the segment supports RGB input
+    ///
+    /// (actually because of WLED it will be true if any busses on the WLED have RGB, but theres nothing I can do about that)
+    pub fn has_rgb(&self) -> bool{
+        self.capabilities & SegmentLightCapability::SEG_CAPABILITY_RGB as u8 != 0
+    }
 
-    pub fn try_from_ip(ip: IpAddr) -> Result<PhysicalWled<'b>, WledControllerError> {
+    /// returns true if the segment supports W (white channel) input
+    ///
+    /// (actually because of WLED it will be true if any busses on the WLED have a white channel, but theres nothing I can do about that)
+    pub fn has_w(&self) -> bool{
+        self.capabilities & SegmentLightCapability::SEG_CAPABILITY_W as u8 != 0
+    }
+
+    /// returns true if the segment supports CCT
+    ///
+    /// (actually because of WLED it will be true if any busses on the WLED have CCT, but theres nothing I can do about that)
+    pub fn has_cct(&self) -> bool{
+        self.capabilities & SegmentLightCapability::SEG_CAPABILITY_CCT as u8 != 0
+    }
+}
+
+
+
+impl PhysicalWled {
+
+    pub fn try_from_ip(ip: IpAddr) -> Result<PhysicalWled, WledControllerError> {
         let mut physical_wled = PhysicalWled::private_try_from_ip(ip)?;
         physical_wled.get_self_segment_bounds()?;
         Ok(physical_wled)
     }
 
 
-    fn private_try_from_ip(ip: IpAddr) -> Result<PhysicalWled<'b>, WledControllerError> {
+    fn private_try_from_ip(ip: IpAddr) -> Result<PhysicalWled, WledControllerError> {
 
         let socketted_ip = SocketAddr::new(ip, 4048);
 
@@ -179,22 +202,21 @@ impl<'b> PhysicalWled<'b> {
                             .ok_or(WledControllerError::MissingKey)?
                             .to_string()
                     );
-                    b.clone()
+                    b
                 }
             };
-            let start = match &segment.start{
-                None => { return Err(WledControllerError::MissingKey) }
-                Some(a) => {}
-            }
-            self.segments.push(SegmentInfo
-                {
-                    start: segment.start.as_ref().ok_or(WledControllerError::MissingKey)?.clone(),
-                    stop: segment.stop.as_ref().ok_or(WledControllerError::MissingKey)?.clone(),
-                    name,
-                    capabilities: segment_capability_vec.next().ok_or(WledControllerError::MissingKey)?.clone(),
-                    ddp_ref: &self.ddp_con,
-                }
-            )
+            let start = &segment.start.ok_or(WledControllerError::MissingKey)?;
+            let stop = &segment.stop.ok_or(WledControllerError::MissingKey)?;
+            let capabilities = segment_capability_vec.next().ok_or(WledControllerError::MissingKey)?;
+
+            let temp_seg = SegmentInfo {
+                start: start.clone(),
+                stop: stop.clone(),
+                name,
+                capabilities: capabilities.clone(),
+            };
+
+            self.segments.push(temp_seg)
         }
         Ok(())
     }
@@ -233,7 +255,7 @@ mod tests {
         let wled = PhysicalWled::try_from_ip(
             IpAddr::V4(Ipv4Addr::new(192,168,1,40))
         ).unwrap();
-        let segs = wled.segments.unwrap();
+        let segs = wled.segments;
         println!("segments: {:?}", segs)
 
     }
