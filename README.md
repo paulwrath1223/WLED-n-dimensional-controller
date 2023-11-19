@@ -11,7 +11,8 @@ Goal:
 ## TODO:
 - [x] way to stream colors to WLED. Thanks @coral
 - [x] way to access the WLED JSON API.
-- [ ] url library or struct
+- [ ] Figure out structuring
+- [ ] url library or struct?
 - [ ] struct for an n dimension universe (a pairing for a set of leds, the way to set their color, and their coordinates, and the effect specific data like sliders and time)
 - [ ] implementations for said structs
 - [ ] effects. hopefully include gif support for 2d universes
