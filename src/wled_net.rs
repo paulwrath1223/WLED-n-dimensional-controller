@@ -7,9 +7,8 @@ use ddp_rs::connection::DDPConnection;
 use reqwest::Url;
 use wled_json_api_library::structures::info::{Info as WledJsonInfo};
 use wled_json_api_library::structures::state::State as WledJsonState;
-
-use wled_json_api_library::structures::info::SegmentLightCapability;
 use crate::error::WledControllerError;
+use crate::wled_color::{WledColor, WledColorType};
 
 
 /// A single WLED server.
@@ -20,58 +19,73 @@ pub struct PhysicalWled {
     /// the DDP connection. Library by @coral and some minor contributions by myself
     pub ddp_con: DDPConnection,
     /// information about pre-defined segments
-    pub segments: Vec<SegmentInfo>,
+    pub segments: Vec<CanonSegmentInfo>,
     /// the name of the server (found in the WLED UI settings)
     pub friendly_name: String,
     /// the url to reach the WLED on in case the IP is not static. ends in ".local"
     pub local_url: String,
     /// Local network IP, ipv4 only currently. (same as WLED)
     pub local_ip: [u8; 4],
+
+    /// a buffer to store colors while various segments are calculating colors
+    buffer: [WledColor; 2000]
 }
 
+/// A segment in a WLED. These are segments that are defined on the WLED and not by this program.
+///
+/// Only used to make grouping universes easier if you wish to reuse the same bounds.
+///
+/// This object should be read-only. You can change it, but the changes won't effect the Wled
 #[derive(Debug)]
-pub struct SegmentInfo {
+pub struct CanonSegmentInfo {
+    /// The starting index of the segment
     pub start: u16,
+
+    /// The stop index of the segment
     pub stop: u16,
+
+    /// The name of the segment
     pub name: String,
-    pub capabilities: u8,
+
+    /// Capabilities of the segment.
+    ///
+    /// As of now this is not actually segment specific,
+    /// but hopefully WLED fixes this and it will become more useful later
+    pub capabilities: WledColorType,
 }
 
 
-
-impl SegmentInfo {
-    /// returns true if the segment supports RGB input
-    ///
-    /// (actually because of WLED it will be true if any busses on the WLED have RGB, but theres nothing I can do about that)
-    pub fn has_rgb(&self) -> bool{
-        self.capabilities & SegmentLightCapability::SEG_CAPABILITY_RGB as u8 != 0
-    }
-
-    /// returns true if the segment supports W (white channel) input
-    ///
-    /// (actually because of WLED it will be true if any busses on the WLED have a white channel, but theres nothing I can do about that)
-    pub fn has_w(&self) -> bool{
-        self.capabilities & SegmentLightCapability::SEG_CAPABILITY_W as u8 != 0
-    }
-
-    /// returns true if the segment supports CCT
-    ///
-    /// (actually because of WLED it will be true if any busses on the WLED have CCT, but theres nothing I can do about that)
-    pub fn has_cct(&self) -> bool{
-        self.capabilities & SegmentLightCapability::SEG_CAPABILITY_CCT as u8 != 0
-    }
+impl CanonSegmentInfo {
+    // /// returns true if the segment supports RGB input
+    // ///
+    // /// (actually because of WLED it will be true if any busses on the WLED have RGB, but theres nothing I can do about that)
+    // pub fn has_rgb(&self) -> bool{
+    //     self.capabilities & SegmentLightCapability::SEG_CAPABILITY_RGB as u8 != 0
+    // }
+    //
+    // /// returns true if the segment supports W (white channel) input
+    // ///
+    // /// (actually because of WLED it will be true if any busses on the WLED have a white channel, but theres nothing I can do about that)
+    // pub fn has_w(&self) -> bool{
+    //     self.capabilities & SegmentLightCapability::SEG_CAPABILITY_W as u8 != 0
+    // }
+    //
+    // /// returns true if the segment supports CCT
+    // ///
+    // /// (actually because of WLED it will be true if any busses on the WLED have CCT, but theres nothing I can do about that)
+    // pub fn has_cct(&self) -> bool{
+    //     self.capabilities & SegmentLightCapability::SEG_CAPABILITY_CCT as u8 != 0
+    // }
 }
-
 
 
 impl PhysicalWled {
-
+    /// Just a wrapper for two private implementations: ```private_try_from_ip``` and ```get_self_segment_bounds```
     pub fn try_from_ip(ip: IpAddr) -> Result<PhysicalWled, WledControllerError> {
         let mut physical_wled = PhysicalWled::private_try_from_ip(ip)?;
         physical_wled.get_self_segment_bounds()?;
         Ok(physical_wled)
     }
-
 
     fn private_try_from_ip(ip: IpAddr) -> Result<PhysicalWled, WledControllerError> {
 
@@ -157,7 +171,6 @@ impl PhysicalWled {
         };
         wled_url.push_str(".local");
 
-
         let physical_wled = PhysicalWled{
             json_con,
             ddp_con,
@@ -165,6 +178,7 @@ impl PhysicalWled {
             friendly_name: wled_name,
             local_url: wled_url,
             local_ip: wled_ip_string,
+            buffer: [WledColor::default(); 2000],
         };
 
         Ok(physical_wled)
@@ -207,13 +221,15 @@ impl PhysicalWled {
             };
             let start = &segment.start.ok_or(WledControllerError::MissingKey)?;
             let stop = &segment.stop.ok_or(WledControllerError::MissingKey)?;
-            let capabilities = segment_capability_vec.next().ok_or(WledControllerError::MissingKey)?;
+            let capabilities = WledColorType::try_new_from_json_type(
+                segment_capability_vec.next().ok_or(WledControllerError::MissingKey)?.clone()
+            )?;
 
-            let temp_seg = SegmentInfo {
+            let temp_seg = CanonSegmentInfo {
                 start: start.clone(),
                 stop: stop.clone(),
                 name,
-                capabilities: capabilities.clone(),
+                capabilities,
             };
 
             self.segments.push(temp_seg)

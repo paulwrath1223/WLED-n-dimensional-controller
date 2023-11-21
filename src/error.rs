@@ -27,4 +27,8 @@ pub enum WledControllerError {
     BadIp,
     #[error("Used as a placeholder in development, you should never see this")]
     TempError,
+    #[error("Wled returned a capability that I dont like: {0}
+        the u8 is a bitmap with masks defined in ```SegmentLightCapability``` and currently \
+        the only error value is a light with no rgb or w support")]
+    InvalidCapability(u8),
 }
