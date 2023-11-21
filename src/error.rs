@@ -21,10 +21,12 @@ pub enum WledControllerError {
     #[error("Attempted to read a key that doesn't exist \
             (either you need to read it from the server, or the server didn't send one)")]
     MissingKey,
-    #[error("Attempted to convert a string to an IP but failed to convert vec to array. \
+    #[error("Attempted to convert a string: ({0}) to an IP but failed to convert vec to array. \
         This is likely because WLED has provided an IPv6 or because the WLED is in AP mode \
         (neither has support yet)")]
-    BadIp,
+    BadIp(String),
+    #[error("Wled gave a goofy ass Mac address: {0}")]
+    BadMac(String),
     #[error("Used as a placeholder in development, you should never see this")]
     TempError,
     #[error("Wled returned a capability that I dont like: {0}

@@ -1,6 +1,6 @@
 pub mod wled_net;
 mod error;
-mod universe;
+mod dispatcher;
 mod wled_color;
 
 
