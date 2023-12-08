@@ -1,3 +1,6 @@
+# SECURITY:
+a library (`openssl`) currently has a vulnerability (`openssl` `X509StoreRef::objects` is unsound) but I'm not using the affected parts and I'm too lazy to fix it right now. Still use at your own risk
+
 # WLED-n-dimensional-controller
 
 
